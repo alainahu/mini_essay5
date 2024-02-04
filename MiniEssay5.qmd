@@ -1,0 +1,78 @@
+---
+title: "The Prime Ministers of Canada"
+author: 
+  - Alaina Hu
+thanks: "Code is available at: https://github.com/alainahu/mini_essay5"
+date: today
+date-format: long
+format: pdf
+bibliography: ref.bib
+---
+## Data
+
+```{r}
+#| echo: false
+#| message: false
+#install.packages("rvest")
+#install.packages("tidyverse")
+library(tidyverse)
+library(dplyr)
+library(rvest)
+library(knitr)
+library(janitor)
+raw_data <- read_html("https://en.wikipedia.org/wiki/List_of_prime_ministers_of_Canada")
+parse_data_selector_gadget <-
+  raw_data |>
+  html_elements(".wikitable") |>
+  (\(tables) tables[[2]])() |>
+  html_table()
+
+```
+
+
+```{r}
+#| echo: false
+#| message: false
+cleaned_data <- parse_data_selector_gadget |>
+  select(`Name(Birth–Death)`) |>
+  filter(row_number() %% 2 == 1) |>
+  slice(-29) |>
+  separate(col = `Name(Birth–Death)`, into = c("Name", "Lifespan"), sep = "\\(") |>
+   mutate(Lifespan = gsub("^b\\. ", "", Lifespan), 
+         Lifespan = if_else(str_detect(Lifespan, "–"), Lifespan, paste0(Lifespan, "–")), Lifespan = gsub("\\)", "", Lifespan)) |>
+  separate(col = Lifespan, into = c("Birth_Year", "Death_Year"), sep = "–") |>
+  distinct()
+```
+
+```{r}
+#| echo: false
+#| message: false
+cleaned_data <- cleaned_data |>
+  mutate(
+    Birth_Year = as.numeric(Birth_Year),
+    Death_Year = as.numeric(Death_Year),
+    Age_at_Death = if_else(
+      !is.na(Death_Year),
+      Death_Year - Birth_Year,
+      NA_real_
+    )
+  )
+```
+
+```{r}
+#| echo: false
+#Displaying the tibble as a nicely formatted table
+cleaned_data |>
+  kable(
+    col.names = c("Prime Minister", "Birth Year", "Death Year", "Age at Death"),
+    booktabs = TRUE
+  )
+```
+## Reflection
+From the data shown above, I learned much about the lifespans and history of the Canadian prime ministers. Firstly, I discovered that the first Canadian prime minister was born in 1815, meaning that the history of Canadian prime ministers began after the start of the U.S presidency. Through web scraping and cleaning the data, I learned that there have been 23 different prime ministers with many prime ministers serving multiple terms or returning to office after leaving office. Prime Minister John Thompson lived for 49 years, and Prime Ministers Mackenzie Bowell and Charles Tupper both lived for 94 years. Additionally, I learned that many former prime ministers are still alive; 7 prime ministers are still alive today.
+
+Data for the birth and death years for the Canadian prime ministers was web scraped from the Wikipedia page titled `List of prime ministers of Canada` [@wiki]. Data gathering and data cleaning was conducted in `R` [@citeR] with help from libraries such as `tidyverse` [@thereferencecanbewhatever], `dplyr` [@dplyr], `knitr` [@knitr], `rvest` [@rvest], and `janitor` [@jan].  The web scraping process was guided by code provided in Chapter 7 of `Telling Stories with Data` [@tellingstories]. For this analysis, I gathered data from a table on the Wikipedia page. Since all in the information I needed about the birth and death years of the Canadian prime ministers was located on one table, I only had to gather information from that table on the page, easily done with the `Selector Gadget`. However, I ran into some trouble when trying to gather information from this table because there were two tables with the same element tag. The `Selector Gadget` was retrieving the table right above the table I wanted, so I had to specify that I wanted the second table element on the page and modify my original code. After successfully retrieving the table I wanted, I began my data cleaning process. For this paper, I only needed information on the names, birth years, and death years of prime ministers, so I filtered out unnecessary columns. To further enhance my data, I cleaned up the values of each column, separated birth years and death years, and calculated the ages at death for prime ministers that had passed away. 
+
+The web scraping and data cleaning process started becoming fun when I had successfully separated the birth and death years into multiple columns. Originally, the prime ministers' name, birth year, and death were joined together in one single column. First, I separated the names from the years, then I separated the birth and death years for the prime ministers. Achieving this step was fun because my table started looking like the table in the web scraping example with U.K prime minister data. Data cleaning took longer than I expected. Initially, I expected the lengthiest process to be scraping the data from the website, but surprisingly, cleaning the data took much longer than retrieving the data. In the future, I would dedicate more time to cleaning the data and have more realistic expectations for the time needed to thoroughly gather the data I need. 
+
+## References
